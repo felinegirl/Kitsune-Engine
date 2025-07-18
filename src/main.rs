@@ -636,6 +636,7 @@ fn main(){
     };
 
     let (width, height) = display.get_framebuffer_dimensions();
+    
     let lastscreen_texture = glium::texture::SrgbTexture2d::empty(&display, width, height).unwrap();
     let lastscreen_depth_texture = glium::texture::DepthTexture2d::empty(&display, width, height).unwrap();
 
@@ -1516,12 +1517,15 @@ fn render_prop(loop_wawa: f32, prop: &mut Prop, main_cam: &mut Camera, shader_va
     // .magnify_filter(glium::uniforms::MagnifySamplerFilter::Nearest)
     // .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest);
 
-    uniform.add("screenbuffer".to_owned(), screen_texture);
-    uniform.add("screenbufferdepth".to_owned(), screendep_texture);
+    let binding: [f32; 2];
+    if(prop.transparency != 1.0){
+        uniform.add("screenbuffer".to_owned(), screen_texture);
+        uniform.add("screenbufferdepth".to_owned(), screendep_texture);
 
-    let (width, height) = screenbuffer.get_dimensions();
-    let binding = [width as f32,height as f32];
-    uniform.add("framebufferSize".to_owned(), &binding);
+        let (width, height) = screenbuffer.get_dimensions();
+        binding = [width as f32,height as f32];
+        uniform.add("framebufferSize".to_owned(), &binding);
+    }
 
     uniform.add("time".to_owned(), &loop_wawa);
 
