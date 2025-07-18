@@ -103,6 +103,9 @@ lazy_static::lazy_static! {
     pub static ref ALLOWFILEGRAB: RwLock<bool> = RwLock::new(false);
     //storing file directories to see if something was already loaded
     pub static ref STRINGSLOADED: RwLock<Vec<String>> = RwLock::new(Vec::new());
+
+    pub static ref HASUNIFIEDLIGHTS: RwLock<bool> = RwLock::new(false);
+    pub static ref LASTUSEDSHADER: RwLock<i32> = RwLock::new(0);
 }
 
 
@@ -1147,6 +1150,7 @@ fn main(){
                 .minify_filter(glium::uniforms::MinifySamplerFilter::Nearest)
                 .depth_texture_comparison(Some(glium::uniforms::DepthTextureComparison::LessOrEqual));
             
+                *HASUNIFIEDLIGHTS.write().unwrap() = false;
                 for pid in &world.1 {
                     let prop = propz.get_mut(&pid).unwrap();
                     let pwa = phys_world.get_mut(&prop.world).unwrap();
@@ -1193,6 +1197,7 @@ fn main(){
 
                 lastscreenbuffer.blit_buffers_from_simple_framebuffer(&screenbuffer, &glium::Rect { left: 0, bottom: 0, width: width, height: height }, &glium::BlitTarget { left: 0, bottom: 0, width: width as i32, height: height as i32 }, glium::uniforms::MagnifySamplerFilter::Nearest, glium::BlitMask { color: true, depth: true, stencil: false });
             
+                *HASUNIFIEDLIGHTS.write().unwrap() = false;
                 for po in &trans_props {
                     let prop = propz.get_mut(&po).unwrap();
                     if prop.transparency == 0.0 {continue;}
@@ -1482,27 +1487,32 @@ fn render_prop(loop_wawa: f32, prop: &mut Prop, main_cam: &mut Camera, shader_va
     // let mut light = PointLight::new();
     // let index = "0".to_owned();
     // light.position = Vector3::new(1.4, 0.4, 0.7f32);
-
-    uniform.add("LeDirLight.direction".to_owned(), &[-0.2, -1.0, -0.3]);
-            
-    uniform.add("LeDirLight.ambient".to_owned(), &[1.0, 1.0, 1.0]);
-    uniform.add("LeDirLight.diffuse".to_owned(), &*world_emv.skyColor.as_ref());
-    uniform.add("LeDirLight.specular".to_owned(), &[0.5, 0.5, 0.5]);
-
+    
     let mut indexx = 0;
-    for light in lightz {
-        let index = indexx.to_string();
-        uniform.add("pointLights[".to_owned()+&index+"].position", &*light.position.as_ref());
-        uniform.add("pointLights[".to_owned()+&index+"].ambient", &*light.ambient.as_ref());
-        uniform.add("pointLights[".to_owned()+&index+"].diffuse", &*light.diffuse.as_ref());
-        uniform.add("pointLights[".to_owned()+&index+"].specular", &*light.specular.as_ref());
-        uniform.add("pointLights[".to_owned()+&index+"].constant", &light.constant);
-        uniform.add("pointLights[".to_owned()+&index+"].linear", &light.linear);
-        uniform.add("pointLights[".to_owned()+&index+"].quadratic", &light.quadratic);
-        indexx+=1;
-    }
+    if !*HASUNIFIEDLIGHTS.read().unwrap() {
 
-    uniform.add("NR_POINT_LIGHTS".to_owned(), &indexx);
+        uniform.add("LeDirLight.direction".to_owned(), &[-0.2, -1.0, -0.3]);
+                
+        uniform.add("LeDirLight.ambient".to_owned(), &[1.0, 1.0, 1.0]);
+        uniform.add("LeDirLight.diffuse".to_owned(), &*world_emv.skyColor.as_ref());
+        uniform.add("LeDirLight.specular".to_owned(), &[0.5, 0.5, 0.5]);
+
+        
+        for light in lightz {
+            let index = indexx.to_string();
+            uniform.add("pointLights[".to_owned()+&index+"].position", &*light.position.as_ref());
+            uniform.add("pointLights[".to_owned()+&index+"].ambient", &*light.ambient.as_ref());
+            uniform.add("pointLights[".to_owned()+&index+"].diffuse", &*light.diffuse.as_ref());
+            uniform.add("pointLights[".to_owned()+&index+"].specular", &*light.specular.as_ref());
+            uniform.add("pointLights[".to_owned()+&index+"].constant", &light.constant);
+            uniform.add("pointLights[".to_owned()+&index+"].linear", &light.linear);
+            uniform.add("pointLights[".to_owned()+&index+"].quadratic", &light.quadratic);
+            indexx+=1;
+        }
+
+        uniform.add("NR_POINT_LIGHTS".to_owned(), &indexx);
+        *HASUNIFIEDLIGHTS.write().unwrap() = true;
+    }
 
     uniform.add("trans".to_string(), &prop.transparency);
 
@@ -1623,7 +1633,11 @@ fn get_shader<'a>(shadersz: &'a HashMap<i32, Shader>, prop: &Prop) -> &'a Progra
     match shadersz.get(&prop.shader) {
         Some(shader) => {
             match &shader.program {
-                Some(real) => &real,
+                Some(real) => {
+                    if *LASTUSEDSHADER.read().unwrap() != prop.shader {*HASUNIFIEDLIGHTS.write().unwrap() = false;}
+                    *LASTUSEDSHADER.write().unwrap() = prop.shader;
+                    &real
+                },
                 None => &shadersz.get(&5).unwrap().program.as_ref().unwrap(),
             }
         },
