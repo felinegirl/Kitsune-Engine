@@ -30,3 +30,13 @@ function texture_viewer(){
     })
 
 }
+
+function map(name) {    
+    load_map(name,0)
+}
+
+function tp(nx,ny,nz) {
+    var mainchar = getByName("TheCharacterController");
+    mainchar.position = new Vector3(nx,ny,nz)
+    mod_prop_copy_phys(mainchar._KE_Prop)
+}

@@ -1001,8 +1001,9 @@ fn main(){
                     world_move_prop(propid, worldid, &mut modelz);
                 },
                 KERequest::move_char(worldid) => {
+                    // let newbod = world_move_prop(&real_char.body, worldid, &mut modelz);
                     // real_char.world = *worldid;
-                    // world_move_prop(&real_char.body, worldid, &mut modelz);
+                    // real_char.body = newbod.0;
                     // let mut camera_map = CAMERAS.write().unwrap();
                     // camera_map.get_mut(&real_char.camera).unwrap().world=*worldid;
                 },
@@ -1299,12 +1300,12 @@ fn main(){
     });
 }
 
-fn world_move_prop(propid: &i32, worldid: &u32, modelz: &mut HashMap<i32, Model>) {
+fn world_move_prop(propid: &i32, worldid: &u32, modelz: &mut HashMap<i32, Model>) -> (i32, u32) {
     //get prop from propz
     let mut propz: std::sync::RwLockWriteGuard<HashMap<i32, Prop>> = PROPS.try_write().unwrap();
     let w = match propz.get_mut(&propid) {
         Some(weee) => weee,
-        None => return,
+        None => return (-1, 0),
     };
     let mut worldz = WORLDS.try_write().unwrap();
     let prpalce = worldz.get_mut(&w.world).unwrap();
@@ -1330,11 +1331,8 @@ fn world_move_prop(propid: &i32, worldid: &u32, modelz: &mut HashMap<i32, Model>
     phys_world.create_phy(w, modelz);
     phys_world._sync_phys_prop(w, CopyWhat::All);
 
-
-
-
     //propz.remove(&propid);
-    return;
+    return (*prpalce.1.last().unwrap(), *worldid);
 }
 
 fn screen_compile(loop_wawa: f32, screen_model: &VertexBuffer<Vertex2D>, screen_shader: &i32, shader_vars: &HashMap<String, ShadvType>, screen_texture: &SrgbTexture2d, screen_depth_texture: &DepthTexture2d, screenbuffer: &mut  SimpleFrameBuffer, target: &mut glium::Frame, shaderz: &HashMap<i32, Shader>, params: &DrawParameters<'_>){
